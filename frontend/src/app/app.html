@@ -44,13 +44,13 @@
   </div>
 
   <!-- No connections message -->
-  @if (connections.length === 0) {
+  @if (connections().length === 0) {
     <p class="text-gray-400 dark:text-gray-600 text-sm">No connections. Click "Add Connection" to start.</p>
   }
 
   <!-- Connection cards -->
   <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-    @for (conn of connections; track conn.id) {
+    @for (conn of connections(); track conn.id) {
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden flex flex-col transition-colors">
         <!-- Card header -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
@@ -83,7 +83,7 @@
 
         <!-- Message history -->
         <div class="flex-1 overflow-y-auto p-3 space-y-1 max-h-64 min-h-32">
-          @for (msg of (conn.messages$ | async) ?? []; track $index) {
+          @for (msg of conn.messages(); track $index) {
             <div
               class="text-xs px-2 py-1 rounded"
               [class.bg-gray-100]="msg.direction === 'sent' && !darkMode"

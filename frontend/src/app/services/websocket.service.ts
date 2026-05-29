@@ -1,5 +1,4 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, signal, WritableSignal } from '@angular/core';
 
 export interface WsMessage {
   direction: 'sent' | 'received';
@@ -10,25 +9,24 @@ export interface WsMessage {
 export interface WsConnection {
   id: string;
   status: 'connecting' | 'open' | 'closed';
-  messages$: BehaviorSubject<WsMessage[]>;
+  messages: WritableSignal<WsMessage[]>;
 }
 
 @Injectable({ providedIn: 'root' })
 export class WebSocketService {
   private sockets = new Map<string, WebSocket>();
-  private connections$ = new BehaviorSubject<WsConnection[]>([]);
   private counter = 0;
 
-  readonly connections = this.connections$.asObservable();
+  readonly connections = signal<WsConnection[]>([]);
 
   private wsUrl = 'ws://localhost:5050/ws';
 
   createConnection(): string {
     const id = `conn-${++this.counter}`;
-    const messages$ = new BehaviorSubject<WsMessage[]>([]);
+    const messages = signal<WsMessage[]>([]);
 
-    const conn: WsConnection = { id, status: 'connecting', messages$ };
-    this.addConnection(conn);
+    const conn: WsConnection = { id, status: 'connecting', messages };
+    this.connections.update((conns) => [...conns, conn]);
 
     const ws = new WebSocket(this.wsUrl);
 
@@ -38,8 +36,7 @@ export class WebSocketService {
     };
 
     ws.onmessage = (event) => {
-      const msgs = messages$.value;
-      messages$.next([
+      messages.update((msgs) => [
         ...msgs,
         { direction: 'received', text: event.data, timestamp: new Date() },
       ]);
@@ -67,8 +64,7 @@ export class WebSocketService {
       ws.close();
       this.sockets.delete(id);
     }
-    const conns = this.connections$.value;
-    const conn = conns.find((c) => c.id === id);
+    const conn = this.connections().find((c) => c.id === id);
     if (conn) {
       conn.status = 'closed';
       this.emit();
@@ -77,8 +73,7 @@ export class WebSocketService {
 
   removeConnection(id: string): void {
     this.closeConnection(id);
-    const conns = this.connections$.value.filter((c) => c.id !== id);
-    this.connections$.next(conns);
+    this.connections.update((conns) => conns.filter((c) => c.id !== id));
   }
 
   send(id: string, message: string): void {
@@ -87,10 +82,9 @@ export class WebSocketService {
 
     ws.send(message);
 
-    const conn = this.connections$.value.find((c) => c.id === id);
+    const conn = this.connections().find((c) => c.id === id);
     if (conn) {
-      const msgs = conn.messages$.value;
-      conn.messages$.next([
+      conn.messages.update((msgs) => [
         ...msgs,
         { direction: 'sent', text: message, timestamp: new Date() },
       ]);
@@ -103,11 +97,7 @@ export class WebSocketService {
     }
   }
 
-  private addConnection(conn: WsConnection): void {
-    this.connections$.next([...this.connections$.value, conn]);
-  }
-
   private emit(): void {
-    this.connections$.next([...this.connections$.value]);
+    this.connections.update((conns) => [...conns]);
   }
 }

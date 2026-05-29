@@ -1,21 +1,18 @@
-import { Component, OnDestroy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
-import { WebSocketService, WsConnection } from './services/websocket.service';
+import { WebSocketService } from './services/websocket.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App implements OnDestroy {
   private ws = inject(WebSocketService);
-  private sub: Subscription;
 
-  connections: WsConnection[] = [];
+  connections = this.ws.connections;
   inputMap: Record<string, string> = {};
   darkMode = localStorage.getItem('theme') !== 'light';
 
@@ -25,9 +22,6 @@ export class App implements OnDestroy {
 
   constructor() {
     document.documentElement.classList.toggle('dark', this.darkMode);
-    this.sub = this.ws.connections.subscribe((conns) => {
-      this.connections = conns;
-    });
   }
 
   toggleTheme(): void {
@@ -84,7 +78,6 @@ export class App implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.sub.unsubscribe();
     this.stopSpam();
   }
 }
