@@ -1,0 +1,126 @@
+<div class="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 p-6 font-mono transition-colors">
+  <header class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">WebSocket Echo Client</h1>
+      <p class="text-gray-500 text-sm mt-1">ws://localhost:5050/ws</p>
+    </div>
+    <button
+      (click)="toggleTheme()"
+      class="px-3 py-2 rounded text-sm border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+    >
+      {{ darkMode ? 'Light Mode' : 'Dark Mode' }}
+    </button>
+  </header>
+
+  <!-- Top controls -->
+  <div class="flex flex-wrap gap-4 mb-8 items-end">
+    <!-- Add connection -->
+    <button
+      (click)="addConnection()"
+      class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-medium transition-colors"
+    >
+      + Add Connection
+    </button>
+
+    <!-- Spam controls -->
+    <div class="flex items-end gap-2">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Spam message</label>
+        <input
+          [(ngModel)]="spamMessage"
+          placeholder="message to broadcast…"
+          class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-sm w-64 focus:outline-none focus:border-emerald-500 transition-colors"
+        />
+      </div>
+      <button
+        (click)="toggleSpam()"
+        [class]="spamRunning
+          ? 'px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-medium transition-colors'
+          : 'px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm font-medium transition-colors'"
+      >
+        {{ spamRunning ? 'Stop Spam' : 'Start Spam' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- No connections message -->
+  @if (connections.length === 0) {
+    <p class="text-gray-400 dark:text-gray-600 text-sm">No connections. Click "Add Connection" to start.</p>
+  }
+
+  <!-- Connection cards -->
+  <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    @for (conn of connections; track conn.id) {
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden flex flex-col transition-colors">
+        <!-- Card header -->
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div class="flex items-center gap-2">
+            <span
+              class="w-2 h-2 rounded-full"
+              [class.bg-emerald-400]="conn.status === 'open'"
+              [class.bg-yellow-400]="conn.status === 'connecting'"
+              [class.bg-red-400]="conn.status === 'closed'"
+            ></span>
+            <span class="text-sm font-medium">{{ conn.id }}</span>
+            <span class="text-xs text-gray-500">({{ conn.status }})</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              (click)="closeConnection(conn.id)"
+              class="text-xs text-gray-500 hover:text-red-400 transition-colors"
+              [disabled]="conn.status === 'closed'"
+            >
+              close
+            </button>
+            <button
+              (click)="removeConnection(conn.id)"
+              class="text-xs text-gray-500 hover:text-red-400 transition-colors"
+            >
+              remove
+            </button>
+          </div>
+        </div>
+
+        <!-- Message history -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-1 max-h-64 min-h-32">
+          @for (msg of (conn.messages$ | async) ?? []; track $index) {
+            <div
+              class="text-xs px-2 py-1 rounded"
+              [class.bg-gray-100]="msg.direction === 'sent' && !darkMode"
+              [class.bg-gray-800]="msg.direction === 'sent' && darkMode"
+              [class.text-gray-700]="msg.direction === 'sent' && !darkMode"
+              [class.text-gray-300]="msg.direction === 'sent' && darkMode"
+              [class.bg-emerald-50]="msg.direction === 'received' && !darkMode"
+              [class.bg-emerald-900/30]="msg.direction === 'received' && darkMode"
+              [class.text-emerald-700]="msg.direction === 'received' && !darkMode"
+              [class.text-emerald-300]="msg.direction === 'received' && darkMode"
+            >
+              <span class="text-gray-400 dark:text-gray-600 mr-2">{{ msg.direction === 'sent' ? '→' : '←' }}</span>
+              {{ msg.text }}
+            </div>
+          } @empty {
+            <p class="text-gray-400 dark:text-gray-700 text-xs">No messages yet.</p>
+          }
+        </div>
+
+        <!-- Send input -->
+        <div class="flex border-t border-gray-200 dark:border-gray-800">
+          <input
+            [(ngModel)]="inputMap[conn.id]"
+            (keydown.enter)="send(conn.id)"
+            placeholder="type a message…"
+            class="flex-1 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none transition-colors"
+            [disabled]="conn.status !== 'open'"
+          />
+          <button
+            (click)="send(conn.id)"
+            class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm transition-colors"
+            [disabled]="conn.status !== 'open'"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
